@@ -1,12 +1,13 @@
-﻿using System.Collections;
+﻿using DG.Tweening;
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using System;
-using DG.Tweening;
 
 public class Controller : MonoBehaviour
 {
     public static event Action OnJumpEnded;
+    public static event Action<Transform> OnStarTransform;
 
     [HideInInspector]
     public bool isRunning;
@@ -27,14 +28,27 @@ public class Controller : MonoBehaviour
     [SerializeField] private List<Transform> checkPointsList = new List<Transform>();
     [SerializeField] private int checkPointIndex = 0;
 
+    
+
     [Space]
-    [Header("Scale Settings")]
-    [SerializeField] private Transform ObjectToScale;
-    [SerializeField] private float scaleValue = 0.1f;
-    [SerializeField] private float scaleMaxLimit = 1.2f;
-    [SerializeField] private float scaleMinLimit = 0.4f;
-    [SerializeField] private bool canScallInshower = false;
-    private float currentScale;
+    [Header("Ragdoll")]
+    private Collider mainColider;
+    private Collider[] allColiders;
+    private Rigidbody[] rigidbodys;
+
+    [Space]
+    [Header("Stars")]
+    [SerializeField] private List<GameObject> starsList = new List<GameObject>();
+    [SerializeField] private List<Color> colorList = new List<Color>();
+    [SerializeField] private int currentIndex = 0;
+    [SerializeField] private GameObject starPrefab;
+    [SerializeField] private float offsetY = 0.2f;
+    [SerializeField] private float cooldownStar = 0.2f;
+    [SerializeField] private float timerStar;
+
+    [Space]
+    [SerializeField] private Transform downPos;
+    [SerializeField] private float durationDown = 2f;
 
     private bool isGameStarted = false;
     private Vector3 startPosition;
@@ -47,6 +61,22 @@ public class Controller : MonoBehaviour
         startPosition = transform.position;
         startScale = transform.localScale;
         animationHandler = GetComponent<AnimationHandler>();
+
+        //Ragdoll
+        mainColider = GetComponent<Collider>();
+        rigidbodys = GetComponentsInChildren<Rigidbody>(true);
+        timerStar = cooldownStar;
+    }
+
+    private void Start()
+    {
+        OnStarTransform?.Invoke(starsList[currentIndex].transform);
+    }
+
+
+    private void Upddate()
+    {
+            ActivateStar();
     }
 
     private void Update()
@@ -56,12 +86,17 @@ public class Controller : MonoBehaviour
             if (isGameStarted)
             {
                 //Do the Scall
-                PenScale();
-        
+                //ActivateStar();
+                TimeBetweenSpawn();
+
                 //Do the Movemeent
                 TimeBetweenMovement();
             }
         }
+
+        if (Input.GetKeyDown(KeyCode.A))
+            DeathMovement();
+
     }
 
 
@@ -104,7 +139,6 @@ public class Controller : MonoBehaviour
                 IncreaseIndex();
             }
         ); 
-        //transform.DOMove(checkPointsList[checkPointIndex].position, moveDuration, false);
     }
 
     private void  Running() => isRunning = false;
@@ -116,37 +150,16 @@ public class Controller : MonoBehaviour
             checkPointIndex++;
     }
 
+
+    //
+    public void DeathMovement()
+    {
+        transform.DOMoveY(downPos.position.y, durationDown);
+        //transform.position = Vector3.MoveTowards(transform.position, downPos.position, 2f);
+    }
     #endregion
 
     
-
-    #region Scale
-
-    //Scale the Pen with UpArrow and DownArrow 
-    private void PenScale()
-    {
-        currentScale = ObjectToScale.localScale.y;
-
-        if (isRunning || canScallInshower)
-        {
-            if (Input.GetKey(KeyCode.UpArrow))
-            {
-                if(currentScale < scaleMaxLimit)
-                {
-                    ObjectToScale.transform.DOScaleY(currentScale + scaleValue, 0);
-                }
-            }
-            else if (Input.GetKey(KeyCode.DownArrow))
-            {
-                if (currentScale > scaleMinLimit)
-                {
-                    ObjectToScale.transform.DOScaleY(currentScale - scaleValue, 0);
-                }
-            }
-        }
-    }
-
-    #endregion
 
     // Linked to button to Start the game
     public void StartGame() => isGameStarted = true;
@@ -161,5 +174,83 @@ public class Controller : MonoBehaviour
         timer = cooldownTime;
     }
 
+    #region RagDoll
+
+    public void DoRagdoll(bool isRagdoll)
+    {
+       /* foreach (var rb in rigidbodys)
+        {
+            rb.useGravity = false;
+        }*/
+
+       // mainColider.enabled = !isRagdoll;
+       
+        GetComponent<Animator>().enabled = !isRagdoll;
+    }
+
+    #endregion
+
+
+    #region StarsMovements
+
+
+    private void TimeBetweenSpawn()
+    {
+        if(timerStar >= cooldownStar)
+        {
+            timerStar = 0;
+            ActivateStar();
+        }
+        else
+        {
+            timerStar += Time.deltaTime;
+        }
+    }
+
+
+    private void ActivateStar()
+    {
+       
+        if (Input.GetKey(KeyCode.UpArrow))
+        {
+                Debug.Log("++");
+                CreateStars();
+                RandomRotation(starsList[currentIndex].transform);
+                int randomIndex = UnityEngine.Random.Range(0, colorList.Count - 1);
+
+                starsList[currentIndex].GetComponent<MeshRenderer>().material.color = colorList[randomIndex];
+                OnStarTransform?.Invoke(starsList[starsList.Count - 1].transform);
+        }
+        else if (Input.GetKey(KeyCode.DownArrow))
+        {
+            if (currentIndex > 0)
+            {
+                Debug.Log("--");
+                starsList[currentIndex].SetActive(false);
+                starsList.Remove(starsList[currentIndex]);
+                currentIndex--;
+                OnStarTransform?.Invoke(starsList[starsList.Count-1].transform);
+            }
+        }
+    }
+
+
+    private void CreateStars()
+    {
+        var lastStartPos = starsList[currentIndex].transform.position;
+        Vector3 spawnPos = new Vector3(lastStartPos.x, lastStartPos.y + offsetY , lastStartPos.z); 
+        
+        GameObject star = Instantiate(starPrefab, spawnPos , Quaternion.Euler(90f,0,0) , this.transform);
+        //star.transform.position = spawnPos;
+        starsList.Add(star);
+        currentIndex++;
+    }
+
+    private void   RandomRotation(Transform trans)
+    {
+        var randomZ = UnityEngine.Random.Range(40, 150);
+        trans.Rotate(Vector3.forward * randomZ);
+    }
+    #endregion
 
 }

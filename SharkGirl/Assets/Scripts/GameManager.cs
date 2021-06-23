@@ -15,9 +15,13 @@ public class GameManager : MonoBehaviour
 
     public  bool inLastCheckPoint = false;
 
+    public bool gotKilledbyShark = false;
+
     public List<CheckPoint>  covers = new List<CheckPoint>();
 
-    [SerializeField] Controller controller;
+    public Controller controller;
+
+    [SerializeField] private float timeToPlayAgain = 3f;
     [SerializeField] UIHandler uiHandler;
     [SerializeField] AnimationHandler animationHandler ;
 
@@ -56,11 +60,7 @@ public class GameManager : MonoBehaviour
     {
         if(state == true)
         {
-            isGameOver = true;
-            //Display GameOver Window with Score
-            uiHandler.DisplayGameOverWindow(true);
-            //Reset Player Position
-            controller.ResetPlayerSettings();
+            StartCoroutine(RestartCourotine());
             inLastCheckPoint = false;
         }
         else
@@ -81,6 +81,14 @@ public class GameManager : MonoBehaviour
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex  );
     }
 
+    //Restart After a time
+    IEnumerator RestartCourotine()
+    {
+        yield return new WaitForSeconds(timeToPlayAgain);
+        ReStartGame();
+    }
+
+
     public void NextLevel()
     {
         DOTween.KillAll();
@@ -91,7 +99,6 @@ public class GameManager : MonoBehaviour
     private void PlayerWin()
     {
         uiHandler.DisplayWinWindow(true);
-        controller.ResetPlayerSettings();
         isWin = true;
     }
 

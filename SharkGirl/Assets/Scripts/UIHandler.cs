@@ -12,6 +12,7 @@ public class UIHandler : MonoBehaviour
     [SerializeField] private GameObject gameOverWindow;
     [SerializeField] private GameObject winWindow;
     private int score = 0;
+    private bool displayOnce = true;
 
     private void OnEnable()
     {
@@ -59,7 +60,11 @@ public class UIHandler : MonoBehaviour
     public void DisplayWinWindow(bool state)
     {
         winWindow.SetActive(state);
-        AudioManger.instance.Play("Win");
+        if (displayOnce)
+        {
+            AudioManger.instance.Play("Win");
+            displayOnce = false;
+        }
     }
 
     public void ButtonSound()

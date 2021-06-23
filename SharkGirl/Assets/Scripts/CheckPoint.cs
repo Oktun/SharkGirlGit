@@ -18,7 +18,8 @@ public class CheckPoint : MonoBehaviour
     [Space]
     [Header("Check Pivots")]
     [SerializeField] private Transform pivotUp;
-    [SerializeField] private Transform pivotDown;[Space]
+    [SerializeField] private Transform pivotDown;
+    [Space]
 
     [Header("Player Pivots")]
     [SerializeField] private Transform playerUpPivot;
@@ -92,6 +93,9 @@ public class CheckPoint : MonoBehaviour
         }
         else
         {
+            GameManager.instance.controller.GetComponent<Animator>().SetTrigger("Death");
+            GameManager.instance.isGameOver = true;
+            GameManager.instance.controller.DeathMovement();
             //Lose Conditions here
             OnGameOver?.Invoke(true);
             if (inCheckMode == true)
